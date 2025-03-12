@@ -97,9 +97,10 @@ if __name__=="__main__":
     image_paths = 'data/Train'
     csv_path = './data/metaDataTrain.csv'
     dataset = NiftiDataset(image_paths, csv_path)
-    image_tensor = dataset[70]
+    image_tensor = dataset[10]
     print(image_tensor.shape)
     image_tensor, image_class = dataset.__getitem_class__(10)
     print(image_tensor.shape, image_class)
     plt.imshow(image_tensor[3,:,:,0], cmap='gray')
+    plt.show()
     
