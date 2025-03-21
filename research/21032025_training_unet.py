@@ -57,29 +57,43 @@ for i in range(1, 24):
 
 data = NiftiDataset("./data/Train")
 
-images = [F.interpolate(data[i][0,:,:,0].reshape(1,1,220,220), size=(128,128), 
+dataset_len = len(data)
+train_size = int(0.8 * dataset_len)
+val_size = dataset_len-train_size
+
+images_train = [F.interpolate(data[i][0,:,:,0].reshape(1,1,220,220), size=(128,128), 
                         mode='bilinear', align_corners=False).reshape(1,128,128)
-           for i in range(32)]
-print(images[0].shape)
-masks = [F.interpolate(data[i][1,:,:,0].reshape(1,1,220,220), size=(128,128),
+           for i in range(train_size)]
+print(images_train[0].shape)
+masks_train = [F.interpolate(data[i][1,:,:,0].reshape(1,1,220,220), size=(128,128),
                        mode='bilinear', align_corners=False).reshape(1,128,128)
-           for i in range(32)]
+           for i in range(train_size)]
+
+images_val = [F.interpolate(data[i][0,:,:,0].reshape(1,1,220,220), size=(128,128), 
+                        mode='bilinear', align_corners=False).reshape(1,128,128)
+           for i in range(train_size, val_size)]
+    
 
 # Compile the model
 # Image to tensorflow
 # masks to tensorflow
-images = torch.cat(images, dim=0)
-masks = torch.cat(masks, dim=0)
-images = tf.convert_to_tensor(images.numpy())
-masks = tf.convert_to_tensor(masks.numpy())
+images_train = torch.cat(images_train, dim=0)
+masks_train = torch.cat(masks_train, dim=0)
+images_train = tf.convert_to_tensor(images_train.numpy())
+masks_train = tf.convert_to_tensor(masks_train.numpy())
 
-masks = tf.cast(masks, tf.float32)
-images = tf.cast(images, tf.float32)
+masks_train = tf.cast(masks_train, tf.float32)
+images_train = tf.cast(images_train, tf.float32)
 
-train_dataset = tf.data.Dataset.from_tensor_slices((images, masks))
+train_dataset = tf.data.Dataset.from_tensor_slices((images_train, masks_train))
 train_dataset = train_dataset.batch(32)
 unet.compile(optimizer=Adam(learning_rate=1e-4), loss=dice_loss, metrics=["accuracy", dice_coef])
 #%%
 # Train the model
 unet.fit(train_dataset, epochs=1000)
+
+#%%
+# See model's performance in the validation set
+
+
 
