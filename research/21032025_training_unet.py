@@ -4,7 +4,7 @@ import os
 # import niidataloader
 import sys
 # sys.path.append('../niidataloader')
-from ..niidataloader import NiftiDataset
+from niidataloader import NiftiDataset
 from huggingface_hub import hf_hub_download
 from tensorflow.keras.models import load_model
 from keras.saving import register_keras_serializable
