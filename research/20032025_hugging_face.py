@@ -5,7 +5,6 @@ import tensorflow as tf
 import os
 # import niidataloader
 import sys
-sys.path.append('../niidataloader')
 from niidataloader import NiftiDataset
 from huggingface_hub import hf_hub_download
 from tensorflow.keras.models import load_model
@@ -61,6 +60,8 @@ for layer in unet.layers:
     layer.trainable = False
 
 # unfreeze the lasts layers
+for i in range(1, 24):
+    unet.layers[-i].trainable = True
 unet.layers[-1].trainable = True
 unet.layers[-2].trainable = True
 unet.layers[-3].trainable = True
