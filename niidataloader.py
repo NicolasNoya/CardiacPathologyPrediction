@@ -10,7 +10,7 @@ import pandas as pd
 from typing import Tuple
 
 class NiftiDataset(Dataset):
-    def __init__(self, image_path: str, csv_path: str, transform=None, augment=False):
+    def __init__(self, image_path: str, csv_path: str=None, transform=None, augment=False):
         """
         Args:
             image_path (str): Path to Test or Train folders.
@@ -29,7 +29,7 @@ class NiftiDataset(Dataset):
     
     def preprocess(self, image_data):
         """
-        Apply preprocessing steps such as normalization.
+        Apply preprocessing step, normalization.
         Args:
             image_data (np.ndarray): Raw image data.
         Returns:
@@ -73,6 +73,10 @@ class NiftiDataset(Dataset):
             # Convert to tensor
             image_tensor = torch.from_numpy(image_data).unsqueeze(0)  # Add channel dimension
             
+            # Change the size of each element of the tensor to make it faster 
+            image_tensor = image_tensor.to(torch.float16)
+
+            
             # Apply augmentation if enabled
             if self.augment:
                 image_tensor = self.augment_image(image_tensor)
@@ -84,23 +88,45 @@ class NiftiDataset(Dataset):
 
         # convert nii_image to tensor
         nii_image_tensor = torch.cat(nii_image, dim=0)
+
+        # Padd the image to make it the same size for all images
+        nii_image_tensor = torch.nn.functional.pad(nii_image_tensor, (0, 0, 0, 180, 0, 180), "constant", 0)
+        # Trim the image to make it the same size for all images
+        nii_image_tensor = nii_image_tensor[:, :220, :220]
         
         return nii_image_tensor
     
     def __getitem_class__(self, idx)->Tuple[torch.Tensor, str]:
-        image_tensor = self.__getitem__(idx)
-        image_class = pd.read_csv(self.csv_path)['Category'][idx]
-        return image_tensor, image_class
+        if self.csv_path is None:
+            raise ValueError("CSV path is not provided.")
+        else:
+            image_tensor = self.__getitem__(idx)
+            image_class = pd.read_csv(self.csv_path)['Category'][idx]
+            return image_tensor, image_class
 
 if __name__=="__main__":
     # Test the NiftiDataset class
-    image_paths = 'data/Train'
+    image_paths = 'data/imagesTr'
     csv_path = './data/metaDataTrain.csv'
     dataset = NiftiDataset(image_paths, csv_path)
-    image_tensor = dataset[10]
-    print(image_tensor.shape)
-    image_tensor, image_class = dataset.__getitem_class__(10)
-    print(image_tensor.shape, image_class)
-    plt.imshow(image_tensor[3,:,:,0], cmap='gray')
-    plt.show()
+    # image_tensor = dataset[0]
+    height = []
+    width = []
+    for three_d_img in dataset:
+        for index, img in enumerate(three_d_img):
+            height.append(img.shape[1])
+            width.append(img.shape[0])
     
+    height = list(set(height))
+    width = list(set(width))
+    print("The width of the image is: ", width)
+    print("The height of the image is: ", height)
+
+    #%%
+    for image in dataset:
+        plt.imshow(image[0,:,:,5], cmap='gray')
+        plt.show()
+    img = dataset[0]
+    print("The number of images in the dataset is: ", img[0,:,:,1].shape)
+    plt.imshow(img[2,:,:,5], cmap='gray')
+    plt.show()
