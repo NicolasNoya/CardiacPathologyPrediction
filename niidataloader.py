@@ -6,11 +6,12 @@ import numpy as np
 import os
 from torch.utils.data import Dataset
 from torchvision import transforms
+import torchvision.transforms.functional as TF
 import pandas as pd
 from typing import Tuple
 
 class NiftiDataset(Dataset):
-    def __init__(self, image_path: str, csv_path: str=None, transform=None, augment=False):
+    def __init__(self, image_path: str, csv_path: str=None, augment=False):
         """
         Args:
             image_path (str): Path to Test or Train folders.
@@ -20,7 +21,6 @@ class NiftiDataset(Dataset):
         """
         self.image_path = image_path
         self.image_list = os.listdir(image_path)
-        self.transform = transform
         self.augment = augment
         self.csv_path = csv_path
     
@@ -38,7 +38,7 @@ class NiftiDataset(Dataset):
         image_data = (image_data - np.min(image_data)) / (np.max(image_data) - np.min(image_data) + 1e-8)
         return image_data
     
-    def augment_image(self, image_tensor):
+    def augment_image(self, image_tensor, angle, hflip, sheare_angle):
         """
         Apply data augmentation transformations.
         Args:
@@ -46,12 +46,12 @@ class NiftiDataset(Dataset):
         Returns:
             torch.Tensor: Augmented image tensor.
         """
-        augmentations = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
-        ])
-        return augmentations(image_tensor)
+        image_tensor = image_tensor.permute(0, 3, 1, 2)
+        image_tensor = image_tensor.to(torch.float32)
+        image_tensor = TF.hflip(image_tensor) if hflip else image_tensor
+        image_tensor = TF.affine(image_tensor, angle=angle, translate=(0, 0), scale=1, shear=sheare_angle)
+        image_tensor = image_tensor.permute(0, 2, 3, 1)
+        return image_tensor
     
     def __getitem__(self, idx):
         folder=os.path.join(self.image_path, self.image_list[idx])
@@ -59,6 +59,12 @@ class NiftiDataset(Dataset):
         # Sort the list, the order will be ED, ED-seg, ES, ES-seg
         image_folder.sort()
         nii_image=[]
+        if self.augment:
+            #define random augmentations for the whole image
+            angle = torch.randint(0, 360, (1,)).item()  # Random rotation
+            hflip = torch.rand(1).item() > 0.5  # Random horizontal flip
+            sheare_angle = torch.randint(-10, 10, (1,)).item()  # Random shear angle
+
 
         for image in image_folder:
             image_path = os.path.join(folder, image)
@@ -79,10 +85,8 @@ class NiftiDataset(Dataset):
             
             # Apply augmentation if enabled
             if self.augment:
-                image_tensor = self.augment_image(image_tensor)
+                image_tensor = self.augment_image(image_tensor, angle, hflip, sheare_angle)
             
-            if self.transform:
-                image_tensor = self.transform(image_tensor)
             
             nii_image.append(image_tensor)
 
@@ -106,27 +110,10 @@ class NiftiDataset(Dataset):
 
 if __name__=="__main__":
     # Test the NiftiDataset class
-    image_paths = 'data/imagesTr'
+    image_paths = 'data/Train'
     csv_path = './data/metaDataTrain.csv'
-    dataset = NiftiDataset(image_paths, csv_path)
-    # image_tensor = dataset[0]
-    height = []
-    width = []
-    for three_d_img in dataset:
-        for index, img in enumerate(three_d_img):
-            height.append(img.shape[1])
-            width.append(img.shape[0])
-    
-    height = list(set(height))
-    width = list(set(width))
-    print("The width of the image is: ", width)
-    print("The height of the image is: ", height)
-
-    #%%
-    for image in dataset:
-        plt.imshow(image[0,:,:,5], cmap='gray')
+    dataset = NiftiDataset(image_paths, csv_path, augment=True)
+    for i in range(10):
+        image_tensor = dataset[0]
+        plt.imshow(image_tensor[0, :, :,0]+image_tensor[1,:,:,0], cmap='gray')
         plt.show()
-    img = dataset[0]
-    print("The number of images in the dataset is: ", img[0,:,:,1].shape)
-    plt.imshow(img[2,:,:,5], cmap='gray')
-    plt.show()
