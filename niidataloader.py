@@ -51,6 +51,7 @@ class NiftiDataset(Dataset):
         image_tensor = TF.hflip(image_tensor) if hflip else image_tensor
         image_tensor = TF.affine(image_tensor, angle=angle, translate=(0, 0), scale=1, shear=sheare_angle)
         image_tensor = image_tensor.permute(0, 2, 3, 1)
+        image_tensor = image_tensor.to(torch.float16)
         return image_tensor
     
     def __getitem__(self, idx):
@@ -115,5 +116,5 @@ if __name__=="__main__":
     dataset = NiftiDataset(image_paths, csv_path, augment=True)
     for i in range(10):
         image_tensor = dataset[0]
-        plt.imshow(image_tensor[0, :, :,0]+image_tensor[1,:,:,0], cmap='gray')
-        plt.show()
+        # plt.imshow(image_tensor[0, :, :,0]+image_tensor[1,:,:,0], cmap='gray')
+        # plt.show()
