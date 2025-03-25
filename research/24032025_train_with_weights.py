@@ -19,9 +19,10 @@ data = NiftiDataset("./data/Train", augment=True)
 UNFRONTZED_LAYERS = 25
 DATASET_SIZE = len(data)
 TRAIN_SIZE = 0.8
-BATCH_SIZE = 16
+BATCH_SIZE = 1
 EPOCHS = 5
 LEARNING_RATE = 1e-4
+model_path = "unet_trained_model_2_dice0.3379485607147217.h5"
 
 
 os.environ["KERAS_BACKEND"] = "jax"
@@ -38,11 +39,10 @@ def dice_coef(y_true, y_pred, smooth=1e-6):
 def gl_sl(*args, **kwargs):
     pass  # Placeholder function (update if needed)
 
-# ✅ Download the model from Hugging Face
-model_path = hf_hub_download(repo_id="amal90888/unet-segmentation-model", filename="unet_model.keras")
-
 # ✅ Load the model with registered custom objects
 unet = load_model(model_path, custom_objects={"dice_coef": dice_coef, "gl_sl": gl_sl}, compile=False)
+# unet = load_model(model_path)
+unet.summary()
 
 # ✅ Recompile with fresh optimizer and correct loss function
 unet.compile(optimizer=Adam(learning_rate=LEARNING_RATE), loss="binary_crossentropy", metrics=["accuracy", dice_coef])
@@ -77,7 +77,7 @@ val_size = DATASET_SIZE-train_size
 # I will train the model changing the dataset hopping that this would prevent the model to overfitting thanks to 
 # augmentation. Also the memory constraints doesn't allow me to create a big dataset with a lot of augmentation 
 # so this is a work around of it.
-for iteration in range(5):
+for iteration in range(8):
     images_train = []
     masks_train = []
     print(f"THE ITERATION IS: {iteration}")
