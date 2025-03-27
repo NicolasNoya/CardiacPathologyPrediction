@@ -15,6 +15,6 @@ class Preprocessing:
         image_blur = F1.gaussian_blur(img, kernel_size=3, sigma=2.0)
         image_blur1 = F1.gaussian_blur(image_blur, kernel_size=5, sigma=2.0)
         # Add some noise
-        image_noise = torch.randn_like(image_blur1) * 0.1 # this is to reduce the variance of the noise
+        image_noise = torch.randn_like(image_blur1) * 0.03 # this is to reduce the variance of the noise
         final_image = image_blur1 + image_noise
         return  final_image
