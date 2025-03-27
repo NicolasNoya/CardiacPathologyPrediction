@@ -38,7 +38,7 @@ class NiftiDataset(Dataset):
         image_data = (image_data - np.min(image_data)) / (np.max(image_data) - np.min(image_data) + 1e-8)
         return image_data
     
-    def augment_image(self, image_tensor, angle, hflip, sheare_angle):
+    def augment_image(self, image_tensor, angle, hflip, sheare_angle, shifts):
         """
         Apply data augmentation transformations.
         Args:
@@ -49,7 +49,12 @@ class NiftiDataset(Dataset):
         image_tensor = image_tensor.permute(0, 3, 1, 2)
         image_tensor = image_tensor.to(torch.float32)
         image_tensor = TF.hflip(image_tensor) if hflip else image_tensor
-        image_tensor = TF.affine(image_tensor, angle=angle, translate=(0, 0), scale=1, shear=sheare_angle)
+        image_tensor = TF.affine(image_tensor, 
+                                 angle=angle, 
+                                 translate=(shifts[0], shifts[1]), 
+                                 scale=1, 
+                                 shear=sheare_angle
+                                 )
         image_tensor = image_tensor.permute(0, 2, 3, 1)
         image_tensor = image_tensor.to(torch.float16)
         return image_tensor
@@ -64,7 +69,8 @@ class NiftiDataset(Dataset):
             #define random augmentations for the whole image
             angle = torch.randint(0, 360, (1,)).item()  # Random rotation
             hflip = torch.rand(1).item() > 0.5  # Random horizontal flip
-            sheare_angle = torch.randint(-10, 10, (1,)).item()  # Random shear angle
+            sheare_angle = torch.randint(-20, 20, (1,)).item()  # Random shear angle
+            shift = (torch.randint(-30, 30, (1,)).item() , torch.randint(-10, 10, (1,)).item())  # Random shift
 
 
         for image in image_folder:
@@ -86,7 +92,13 @@ class NiftiDataset(Dataset):
             
             # Apply augmentation if enabled
             if self.augment:
-                image_tensor = self.augment_image(image_tensor, angle, hflip, sheare_angle)
+                image_tensor = self.augment_image(
+                        image_tensor, 
+                        angle, 
+                        hflip, 
+                        sheare_angle, 
+                        shift,
+                    )
             
             
             nii_image.append(image_tensor)
