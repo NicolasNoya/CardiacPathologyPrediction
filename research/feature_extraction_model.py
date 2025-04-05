@@ -208,6 +208,7 @@ if __name__=="__main__":
     filtered_image = feature_extractor.preprocessing(1)
     cluster_labels = feature_extractor.create_the_clusters(1)
     #%%
+    cluster_labels = feature_extractor.create_the_clusters(0)
     plt.imshow(cluster_labels[0][0], cmap='gray')
     plt.show()
     #%%

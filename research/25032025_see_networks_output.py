@@ -17,14 +17,14 @@ from torch.nn import functional as F
 import numpy as np
 
 # Configuration
-data = NiftiDataset("./data/Train", augment=True)
+data = NiftiDataset("./data/Train", augment=False)
 UNFRONTZED_LAYERS = 25
 DATASET_SIZE = len(data)
 TRAIN_SIZE = 0.8
 BATCH_SIZE = 1
 EPOCHS = 5
 LEARNING_RATE = 1e-4
-model_path = "unet_trained_model_2_dice0.3379485607147217.h5"
+model_path = "best_model.h5"
 
 
 os.environ["KERAS_BACKEND"] = "jax"
@@ -70,12 +70,15 @@ feature_extractor = FeatureExtractor(images_path="./data/Train")
 
 data = NiftiDataset("./data/Train", augment=False)
 
-idx = int(len(data)*0.8+2)
+# idx = int(len(data)*0.8+2)
+idx = 8
+image = data[idx][0,:,:,0]
+print(image.shape)
 # for idx in range(int(len(data)*0.8), len(data)):
-image = feature_extractor.preprocessing(idx)
-plt.imshow(image[0,0,:,:,:].reshape(220,220), cmap='grey')
+# image = feature_extractor.preprocessing(idx)
+plt.imshow(image.reshape(220,220), cmap='grey')
 plt.show()
-image = image[0,0,:,:,:].reshape(220,220)
+# image = image[0,0,:,:,:].reshape(220,220)
 
 image = F.interpolate(image.reshape(1,1,220,220), size=(128,128),
                                     mode='bilinear', align_corners=False).reshape(1,128,128)

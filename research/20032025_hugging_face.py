@@ -7,6 +7,7 @@ import os
 import sys
 from niidataloader import NiftiDataset
 from huggingface_hub import hf_hub_download
+os.environ["KERAS_BACKEND"] = "jax"
 from tensorflow.keras.models import load_model
 from keras.saving import register_keras_serializable
 import tensorflow.keras.backend as K
@@ -15,7 +16,6 @@ from torch.nn import functional as F
 #%%
 
 # ✅ Set Keras backend (optional)
-os.environ["KERAS_BACKEND"] = "jax"
 
 # ✅ Register and define missing functions
 @register_keras_serializable()
@@ -34,6 +34,9 @@ model_path = hf_hub_download(repo_id="amal90888/unet-segmentation-model", filena
 
 # ✅ Load the model with registered custom objects
 unet = load_model(model_path, custom_objects={"dice_coef": dice_coef, "gl_sl": gl_sl}, compile=False)
+
+# Save the model
+unet.save("unet_model_original.keras")
 
 # ✅ Recompile with fresh optimizer and correct loss function
 from tensorflow.keras.optimizers import Adam
