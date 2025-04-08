@@ -185,7 +185,7 @@ class DenseNet(nn.Module):
 
 
 class CombinedLoss(nn.Module):
-    def __init__(self, alpha=0.5, smooth=1e-8):  # alpha balances the two losses
+    def __init__(self, alpha=0.25, smooth=1e-8):  # alpha balances the two losses
         super().__init__()
         self.alpha = alpha
         self.ce = nn.CrossEntropyLoss()
@@ -209,7 +209,7 @@ class CombinedLoss(nn.Module):
 
 
 class DenseNetTrainer:
-    def __init__(self, path_to_images, epochs=1, alpha=0.5, train_fraction=0.8, check_val_every=10):
+    def __init__(self, path_to_images, epochs=1, alpha=0.25, train_fraction=0.8, check_val_every=10):
         """
         Args:
             path_to_images (str): Path to Test or Train folders.
@@ -221,8 +221,8 @@ class DenseNetTrainer:
         self.criterion = CombinedLoss(alpha=alpha)
         self.generator = torch.Generator().manual_seed(2001)
         train_dataset, val_dataset = random_split(self.dataset, [self.train_size, self.val_size], generator=self.generator)
-        self.train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-        self.val_loader = DataLoader(val_dataset, batch_size=1)
+        self.train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True) #This is a batchsize of 1 because the images are 3D
+        self.val_loader = DataLoader(val_dataset, batch_size=1)                   # Which is more or less 10 so is equal to the papers implementation
         self.epochs = epochs
         self.best_dice_model_val = 0
         self.best_loss_model_val = 1000
@@ -241,7 +241,7 @@ class DenseNetTrainer:
         model = model.to(device)
 
         # TODO: Check the hyperparameters in the paper
-        optimizer = optim.Adam(model.parameters(), lr=1e-3)
+        optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
         total_loss = 0
         losses_train = []
         dices_train = []
@@ -250,7 +250,7 @@ class DenseNetTrainer:
         total_dice = 0
         print("starts")
         for epoch in range(epochs):
-            for images in tqdm(train_loader,  desc=f"Training{epoch+1}/{epochs}"):
+            for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs}"):
                 x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                 x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                 print("The shape of the images is: ", x_diastole.shape)
@@ -325,6 +325,6 @@ class DenseNetTrainer:
 #%%
 if __name__ == "__main__":
     path_to_images = "./data/Train"
-    trainer = DenseNetTrainer(path_to_images, epochs=1, alpha=0.5, train_fraction=0.8, check_val_every=10)
+    trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
     trainer.train()
     # trainer.validate(trainer.model, trainer.val_loader, trainer.criterion, device)
