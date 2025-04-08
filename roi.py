@@ -16,9 +16,9 @@ class ROI:
             path_to_images (str): Path to Test or Train folders.
         """
         self.path_to_images = path_to_images
-        self.dataset = NiftiDataset(path_to_images, augment=False)
+        self.dataset = NiftiDataset(path_to_images, augment=False, roi=False)
 
-    def get_roi(self, image_idx):
+    def get_roi(self, image_idx, diastole=0):
         """
         Get the region of interest (ROI) from the image at the specified index.
         Args:
@@ -27,15 +27,15 @@ class ROI:
             np.ndarray: ROI extracted from the image.
         """
         # Load the image
-        image = self.dataset[image_idx][0]
-        mask = self.dataset[image_idx][1]
+        image = self.dataset[image_idx][diastole]
+        mask = self.dataset[image_idx][diastole+1]
         volume = self.get_temoral_slices(image_idx)
         first_harmonic = np.transpose(self.first_harmonic_image(volume), (2,0,1))
 
         # apply canny edge detection
         edges = np.array([canny(fh, sigma=1.0) for fh in first_harmonic])
         # apply hough transform to find circles
-        cx,cy,radius = self.circular_hough_transform(edges, (15, 30))
+        cx,cy,radius = self.circular_hough_transform(edges, (8, 35))
         roi_image = []
         roi_mask = []
 
@@ -73,7 +73,20 @@ class ROI:
         cy = np.zeros(hough_res.shape[0])
         radii = np.zeros(hough_res.shape[0])
         for i in range(hough_res.shape[0]):
-            _, cx[i], cy[i], radii[i] = hough_circle_peaks(hough_res[i], hough_radii, total_num_peaks=1)
+            # _, cx[i], cy[i], radii[i] = hough_circle_peaks(hough_res[i], hough_radii, total_num_peaks=1)
+            _, cx_arr, cy_arr, _ = hough_circle_peaks(hough_res[i], hough_radii, total_num_peaks=1)
+            if len(cx_arr) > 0:
+                cx[i] = cx_arr[0]
+                cy[i] = cy_arr[0]
+            else:
+                # If no circle is found, set cx and cy to the last value
+                cx[i] = cx[i-1] if i > 0 else -1
+                cy[i] = cx[i-1] if i > 0 else -1
+
+        if cx[0] == -1 or cy[0] == -1:
+            # If the first value is -1, set it to the second value
+            cx[0] = cx[1]
+            cy[0] = cx[1]
         return cx, cy, radii
  
 
@@ -89,9 +102,6 @@ class ROI:
         volume = np.stack([diastole_image, systole_image], axis=0)
         return np.moveaxis(volume, 0, -1)
 
-
-
-
     def first_harmonic_image(self, temporal_slices):
         fft_result = fft(temporal_slices, axis=-1)
         first_harmonic = np.abs(fft_result[..., 1])
@@ -101,6 +111,18 @@ class ROI:
         
 
 if __name__ == "__main__":
+    from torch.utils.data import random_split, DataLoader
     path = "./data/Train"
     roi_extractor = ROI(path)
-    roi, mask = roi_extractor.get_roi(0)
+    roi, mask = roi_extractor.get_roi(1)
+    dataset = NiftiDataset(path, augment=False, roi=True)
+
+    print("The shape of the roi is: ", dataset[0].size())
+    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+    for i in dataloader:
+        print((i).size())
+        plt.imshow(i[0][0,:,:,0].numpy(), cmap='gray')
+        plt.show()
+        break
+# %%
+
