@@ -3,6 +3,7 @@
 # Densely Connected Fully Convolutional Network for Short-Axis Cardiac Cine MR Image Segmentation and Heart Diagnosis Using Random Forest 
 # https://link.springer.com/chapter/10.1007/978-3-319-75541-0_15#Tab3
 from tqdm import tqdm
+import time
 import torch
 import torch.nn as nn
 from roi import ROI
@@ -193,19 +194,34 @@ class CombinedLoss(nn.Module):
 
     def forward(self, preds, targets):
         loss_ce = self.ce(preds, targets)
-        loss_dice = self.dice(preds, targets)
+        loss_dice = 1-self.dice(preds, targets)
         return self.alpha * loss_ce + (1 - self.alpha) * loss_dice
 
     def dice(self, preds, targets):
-        total_dice = 0
-        for i in range(preds.shape[0]):
-            intersection = (preds[i] == targets[i]).sum().item()
-            union = preds.sum().item() + targets.sum().item()
+        # print("preds shape: ", preds.shape)
+        # print("targets shape: ", targets.shape)
+        # total_dice = 0
+        # for i in range(preds.shape[0]):
+        #     intersection = (preds[i] == targets[i]).sum().item()
+        #     union = preds.sum().item() + targets.sum().item()
             
-            dice = (2. * intersection + self.smooth) / (union + self.smooth)
-            total_dice += dice
-        dice = total_dice / preds.shape[0]  # Average over batch
-        return 1 - dice  # Dice Loss = 1 - Dice coefficient
+        #     dice = (2. * intersection + self.smooth) / (union + self.smooth)
+        #     total_dice += dice
+        # dice = total_dice / preds.shape[0]  # Average over batch
+        # return 1 - dice  # Dice Loss = 1 - Dice coefficient
+        B, C, H, W = targets.shape
+
+        # Flatten across spatial and batch dims for each class
+        pred_flat = preds.contiguous().view(C, -1)
+        target_flat = targets.contiguous().view(C, -1)
+
+        intersection = (pred_flat * target_flat).sum(dim=1)
+        union = pred_flat.sum(dim=1) + target_flat.sum(dim=1)
+
+        dice_per_class = (2. * intersection + self.smooth) / (union + self.smooth)
+        mean_dice = dice_per_class.mean().item()
+
+        return mean_dice
 
 
 class DenseNetTrainer:
@@ -221,12 +237,30 @@ class DenseNetTrainer:
         self.criterion = CombinedLoss(alpha=alpha)
         self.generator = torch.Generator().manual_seed(2001)
         train_dataset, val_dataset = random_split(self.dataset, [self.train_size, self.val_size], generator=self.generator)
-        self.train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True) #This is a batchsize of 1 because the images are 3D
+        self.train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, num_workers=2) #This is a batchsize of 1 because the images are 3D
         self.val_loader = DataLoader(val_dataset, batch_size=1)                   # Which is more or less 10 so is equal to the papers implementation
         self.epochs = epochs
         self.best_dice_model_val = 0
         self.best_loss_model_val = 1000
         self.check_val_every = check_val_every
+    
+    def teste_time(self):
+        for images in self.train_loader:
+                print("start")
+                # Start counting time
+                start_time = time.time()
+                x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+ 
+                endtime = time.time()
+                print("finish ", endtime-start_time)
+                
+
+            
     
     def train(self, criterion = None, train_loader = None, epochs = None):
         model = DenseNet()
@@ -250,14 +284,17 @@ class DenseNetTrainer:
         total_dice = 0
         print("starts")
         for epoch in range(epochs):
+            start_time = time.time()        
             for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs}"):
                 x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                 x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                print("The shape of the images is: ", x_diastole.shape)
                 # Channels of the true values: 4,128,128,7 
                 # 4 for every element to segment, and 7 for the 7 layers of the image
-                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
-                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                # print("x_diastole shape: ", x_diastole.shape, "y_true_diastole shape: ", y_true_diastole.shape)
+                # plt.imshow(x_diastole[0][0] + y_true_diastole[0][2], cmap='gray')
+                # plt.show()
                 # To device
                 x_diastole = x_diastole.to(device)
                 x_systole = x_systole.to(device)
@@ -265,19 +302,22 @@ class DenseNetTrainer:
                 y_true_systole = y_true_systole.to(device)
 
                 optimizer.zero_grad()
-                y_pred_diastole = model(x_diastole).permute(1,2,3,0)
-                y_pred_systole = model(x_systole).permute(1,2,3,0)
+                y_pred_diastole = model(x_diastole)
+                y_pred_systole = model(x_systole)
+                # print("y_pred_diastole shape: ", y_pred_diastole.shape, "y_true_diastole shape: ", y_true_diastole.shape)
+                # break
                 loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
                 dice = 1 - criterion.dice(y_pred_diastole, y_true_diastole)
                 total_dice += dice
+                end_time = time.time()
             print("The average dice is: ", total_dice / len(train_loader))
             print("The average loss is: ", total_loss / len(train_loader))
             losses_train.append(total_loss / len(train_loader))
             dices_train.append(total_dice / len(train_loader))
-            if epochs%self.check_val_every == 0:
+            if epoch%self.check_val_every == 0:
                 self.validate(model, self.val_loader, criterion, device)
     
     def validate(self, model, dataloader, criterion, device):
@@ -288,13 +328,12 @@ class DenseNetTrainer:
             for images in tqdm(dataloader,  desc=f"Validation"):
                 x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                 x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                print("The shape of the images is: ", x_diastole.shape)
                 # Channels of the true values: 4,128,128,7 
                 # 4 for every element to segment, and 7 for the 7 layers of the image
                 # y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64)).permute(3,0,1,2).to(torch.float32)
                 # y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64)).permute(3,0,1,2).to(torch.float32)
-                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
-                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(3,0,1,2).to(torch.float32)
+                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
  
                 # To device
                 x_diastole = x_diastole.to(device)
@@ -302,8 +341,8 @@ class DenseNetTrainer:
                 y_true_diastole = y_true_diastole.to(device)
                 y_true_systole = y_true_systole.to(device)
 
-                y_pred_diastole = model(x_diastole).permute(1,2,3,0)
-                y_pred_systole = model(x_systole).permute(1,2,3,0)
+                y_pred_diastole = model(x_diastole)
+                y_pred_systole = model(x_systole)
                 loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
                 total_loss += loss.item()
                 dice = 1 - criterion.dice(y_pred_diastole, y_true_diastole)
@@ -322,9 +361,9 @@ class DenseNetTrainer:
             print("Best loss model saved")
             torch.save(model.state_dict(), 'model_weights_best_dice_los.pth')
 
-#%%
 if __name__ == "__main__":
     path_to_images = "./data/Train"
     trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
     trainer.train()
     # trainer.validate(trainer.model, trainer.val_loader, trainer.criterion, device)
+# %%
