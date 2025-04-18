@@ -58,7 +58,7 @@ class ROI:
         return roi_image, roi_mask
 
 
-    def crop_roi(self, image, center, size=98):
+    def crop_roi(self, image, center, size=128):
         x, y = center
         half = int(size // 2)
         x1, y1 = int(max(x - half, 0)), int(max(y - half, 0))

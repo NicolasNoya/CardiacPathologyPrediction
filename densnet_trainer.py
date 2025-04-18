@@ -70,29 +70,37 @@ class DenseNetTrainer:
             total_loss = 0
             total_dice = 0
             for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs} Average Loss: {total_loss/len(train_loader):.4f} Average Dice: {total_dice/len(train_loader):.4f}"):
-                x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                # Channels of the true values: 4,128,128, X
-                # 4 for every element to segment, and X for the X layers of the image
-                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
-                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                try:
+                    x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                    x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                    # Channels of the true values: 4,128,128, X
+                    # 4 for every element to segment, and X for the X layers of the image
+                    y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                    y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
 
-                # To device
-                x_diastole = x_diastole.to(device)
-                x_systole = x_systole.to(device)
-                y_true_diastole = y_true_diastole.to(device)
-                y_true_systole = y_true_systole.to(device)
+                    # To device
+                    x_diastole = x_diastole.to(device)
+                    x_systole = x_systole.to(device)
+                    y_true_diastole = y_true_diastole.to(device)
+                    y_true_systole = y_true_systole.to(device)
 
-                optimizer.zero_grad()
-                y_pred_diastole = model(x_diastole)
-                y_pred_systole = model(x_systole)
+                    optimizer.zero_grad()
+                    y_pred_diastole = model(x_diastole)
+                    y_pred_systole = model(x_systole)
 
-                loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-                dice = criterion.dice(y_pred_diastole, y_true_diastole)
-                total_dice += dice
+                    loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
+                    loss.backward()
+                    optimizer.step()
+                    total_loss += loss.item()
+                    dice = criterion.dice(y_pred_diastole, y_true_diastole)
+                    total_dice += dice
+                except Exception as e:
+                    # Handle CUDA out of memory error to avoid problems for long training
+                    if 'CUDA out of memory' in str(e):
+                        torch.cuda.empty_cache()
+                        print("Skipped batch due to OOM.")
+                        continue                
+
             losses_train.append(total_loss / len(train_loader))
             dices_train.append(total_dice / len(train_loader))
 
@@ -118,24 +126,31 @@ class DenseNetTrainer:
             total_loss = 0
             total_dice = 0
             for images in tqdm(dataloader,  desc=f"Validation"):
-                x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
-                y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
-                y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
- 
-                # To device
-                x_diastole = x_diastole.to(device)
-                x_systole = x_systole.to(device)
-                y_true_diastole = y_true_diastole.to(device)
-                y_true_systole = y_true_systole.to(device)
+                try:
+                    x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                    x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+                    y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+                    y_true_systole = F.one_hot((images[0][3]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
+    
+                    # To device
+                    x_diastole = x_diastole.to(device)
+                    x_systole = x_systole.to(device)
+                    y_true_diastole = y_true_diastole.to(device)
+                    y_true_systole = y_true_systole.to(device)
 
-                y_pred_diastole = model(x_diastole)
-                y_pred_systole = model(x_systole)
-                loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
-                total_loss += loss.item()
-                dice = criterion.dice(y_pred_diastole, y_true_diastole)
-                total_dice += dice
-            
+                    y_pred_diastole = model(x_diastole)
+                    y_pred_systole = model(x_systole)
+                    loss = criterion(y_pred_diastole, y_true_diastole) + criterion(y_pred_systole, y_true_systole)
+                    total_loss += loss.item()
+                    dice = criterion.dice(y_pred_diastole, y_true_diastole)
+                    total_dice += dice
+                except Exception as e:
+                    # Handle CUDA out of memory error to avoid problems for long training
+                    if 'CUDA out of memory' in str(e):
+                        torch.cuda.empty_cache()
+                        print("Skipped batch due to OOM.")
+                        continue                
+
 
         dice_val = total_dice / len(dataloader)
         loss_val = total_loss / len(dataloader)
