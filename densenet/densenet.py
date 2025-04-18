@@ -80,3 +80,14 @@ class DenseNet(nn.Module):
         x52 = self.softmax(x51)
         return x52
 
+    def load_model(self, model_path):
+        """
+        Load the model weights from a file.
+        Args:
+            model_path (str): Path to the model weights file.
+        """
+        self.load_state_dict(torch.load(model_path))
+    
+
+
+   
