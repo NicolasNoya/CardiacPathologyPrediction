@@ -87,7 +87,8 @@ class Profiler:
             # Get a random mask between 0 and 3
             mask_index = torch.randint(0, gt_masks[i].shape[0], (1,)).item()
             gt = gt_masks[i][mask_index].cpu().numpy()
-            pred = pred_masks[i][mask_index].cpu().numpy()
+            # pred = pred_masks[i][mask_index].cpu().numpy()
+            pred = pred_masks[i][mask_index]
 
             axs[i, 0].imshow(img, cmap="gray")
             axs[i, 0].set_title(titles[0])

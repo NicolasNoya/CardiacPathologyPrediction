@@ -50,8 +50,8 @@ class DenseNetTrainer:
         self.profiler = Profiler(log_dir=profiling_dir)
     
 
-    def train(self, criterion = None, train_loader = None, epochs = None):
-        model = DenseNet()
+    def train(self, criterion = None, train_loader = None, epochs = None, model=None):
+        model = (DenseNet() if model is None else model)
         # Let the user tune the hyperparameters
         criterion = (self.criterion if criterion is None else criterion)
         train_loader = (self.train_loader if train_loader is None else train_loader)
@@ -62,14 +62,14 @@ class DenseNetTrainer:
         model = model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
-        losses_train = []
-        dices_train = []
+        losses_train = [0.]
+        dices_train = [0.]
         losses_val = []
         dices_val = []
         for epoch in range(epochs):
             total_loss = 0
             total_dice = 0
-            for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs} Average Loss: {total_loss/len(train_loader):.4f} Average Dice: {total_dice/len(train_loader):.4f}"):
+            for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs} Average Loss: {losses_train[-1]:.4f} Average Dice: {dices_train[-1]:.4f}"):
                 try:
                     x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                     x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
@@ -106,7 +106,9 @@ class DenseNetTrainer:
 
             if epoch%self.check_val_every == 0:
                 # Profile the training
-                self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole, tag="Segmentation Diastole Validation", max_images=2)
+                print(type(y_pred_diastole))
+                y_pred_diastole = y_pred_diastole.cpu()
+                self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Training", max_images=2)
                 self.profiler.log_metric(losses_train[-1], metric_name="Train Loss", step=epoch)
                 self.profiler.log_metric(dices_train[-1], metric_name="Train Dice", step=epoch)
 
@@ -127,6 +129,7 @@ class DenseNetTrainer:
             total_dice = 0
             for images in tqdm(dataloader,  desc=f"Validation"):
                 try:
+
                     x_diastole = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                     x_systole = images[0][2].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
                     y_true_diastole = F.one_hot((images[0][1]*3).to(torch.int64), num_classes=4).permute(2,3,0,1).to(torch.float32)
@@ -157,23 +160,28 @@ class DenseNetTrainer:
         print("The average dice in validation is: ", dice_val)
         print("The average loss in validation is: ", loss_val)
         # Profile the validation
-        self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole, tag="Segmentation Diastole Validation", max_images=2)
+        y_pred_diastole = y_pred_diastole.cpu()
+        self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Validation", max_images=2)
+        # self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole, tag="Segmentation Diastole Validation", max_images=2)
         self.profiler.log_metric(loss_val, metric_name="Val Loss", step=epoch)
         self.profiler.log_metric(dice_val, metric_name="Val Dice", step=epoch)
 
         if dice_val > self.best_dice_model_val:
             self.best_dice_model_val = dice_val
             print("Best dice model saved")
-            torch.save(model.state_dict(), 'model_weights_best_dice_val.pth')
+            torch.save(model.state_dict(), f"model_weights_best_dice_val{dice_val}.pth")
         if loss_val < self.best_loss_model_val:
             self.best_loss_model_val = loss_val
             print("Best loss model saved")
-            torch.save(model.state_dict(), 'model_weights_best_dice_los.pth')
+            torch.save(model.state_dict(), f"model_weights_best_dice_los{loss_val}.pth")
         
         return dice_val, loss_val
-#%%
+
 if __name__ == "__main__":
     path_to_images = "./data/Train"
-    trainer = DenseNetTrainer(path_to_images, epochs=1, alpha=0.25, train_fraction=0.8, check_val_every=10)
+    trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
     model = DenseNet()
-    trainer.validate(model)
+    model.load_model("/home/onyxia/work/CardiacPathologyPrediction-main/model_weights_best_dice_val(13).pth")
+    trainer.train(model=model)
+
+# %%
