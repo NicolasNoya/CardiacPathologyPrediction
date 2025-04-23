@@ -55,7 +55,7 @@ class Profiler:
         self.writer.add_figure("Confusion Matrix", fig)
         plt.close(fig)
     
-    def profile_segmentation_triplets(self, images, gt_masks, pred_masks, tag="Segmentation Triplets", max_images=2):
+    def profile_segmentation_triplets(self, images, gt_masks, pred_masks, tag="Segmentation Triplets", max_images=2, step=0):
         """
         Logs a grid of triplets (image, ground truth mask, predicted mask) to TensorBoard.
         It logs three images, one for the original image, the next for the ground thruth mask,
@@ -103,7 +103,7 @@ class Profiler:
                 ax.axis("off")
 
         plt.tight_layout()
-        self.writer.add_figure(tag, fig)
+        self.writer.add_figure(tag, fig, global_step=step)
         plt.close(fig)
 
     

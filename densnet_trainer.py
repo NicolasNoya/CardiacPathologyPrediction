@@ -48,6 +48,7 @@ class DenseNetTrainer:
         self.best_loss_model_val = 1000
         self.check_val_every = check_val_every
         self.profiler = Profiler(log_dir=profiling_dir)
+        self.step = 0
     
 
     def train(self, criterion = None, train_loader = None, epochs = None, model=None):
@@ -108,13 +109,14 @@ class DenseNetTrainer:
                 # Profile the training
                 print(type(y_pred_diastole))
                 y_pred_diastole = y_pred_diastole.cpu()
-                self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Training", max_images=2)
+                self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Training", max_images=2, step=self.step)
                 self.profiler.log_metric(losses_train[-1], metric_name="Train Loss", step=epoch)
                 self.profiler.log_metric(dices_train[-1], metric_name="Train Dice", step=epoch)
 
                 dice_val, los_val = self.validate(model, self.val_loader, criterion, device, epoch)
                 losses_val.append(los_val)
                 dices_val.append(dice_val)
+                self.step+=1
                 
     
     def validate(self, model, dataloader=None, criterion=None, device=None, epoch=0):
@@ -161,7 +163,7 @@ class DenseNetTrainer:
         print("The average loss in validation is: ", loss_val)
         # Profile the validation
         y_pred_diastole = y_pred_diastole.cpu()
-        self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Validation", max_images=2)
+        self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Validation", max_images=2, step=self.step)
         # self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole, tag="Segmentation Diastole Validation", max_images=2)
         self.profiler.log_metric(loss_val, metric_name="Val Loss", step=epoch)
         self.profiler.log_metric(dice_val, metric_name="Val Dice", step=epoch)
