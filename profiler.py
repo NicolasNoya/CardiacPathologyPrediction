@@ -55,7 +55,7 @@ class Profiler:
         self.writer.add_figure("Confusion Matrix", fig)
         plt.close(fig)
     
-    def profile_segmentation_triplets(self, images, gt_masks, pred_masks, tag="Segmentation Triplets", max_images=2):
+    def profile_segmentation_triplets(self, images, gt_masks, pred_masks, tag="Segmentation Triplets", max_images=2, step=0):
         """
         Logs a grid of triplets (image, ground truth mask, predicted mask) to TensorBoard.
         It logs three images, one for the original image, the next for the ground thruth mask,
@@ -87,7 +87,8 @@ class Profiler:
             # Get a random mask between 0 and 3
             mask_index = torch.randint(0, gt_masks[i].shape[0], (1,)).item()
             gt = gt_masks[i][mask_index].cpu().numpy()
-            pred = pred_masks[i][mask_index].cpu().numpy()
+            # pred = pred_masks[i][mask_index].cpu().numpy()
+            pred = pred_masks[i][mask_index]
 
             axs[i, 0].imshow(img, cmap="gray")
             axs[i, 0].set_title(titles[0])
@@ -102,7 +103,7 @@ class Profiler:
                 ax.axis("off")
 
         plt.tight_layout()
-        self.writer.add_figure(tag, fig)
+        self.writer.add_figure(tag, fig, global_step=step)
         plt.close(fig)
 
     
