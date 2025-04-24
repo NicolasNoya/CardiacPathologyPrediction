@@ -62,8 +62,11 @@ class ROI:
         x, y = center
         half = int(size // 2)
         x1, y1 = int(max(x - half, 0)), int(max(y - half, 0))
-        x2, y2 = int(x1 + size), int(y1 + size)
-        return image[y1:y2, x1:x2]
+        x2, y2 = int(min((x1 + size),220)), int(min(y1 + size, 220))
+        x1, y1 = x2-128, y2-128
+        # To avoid leaving the image edges in both sizes
+        cropped_image = image[y1:y2, x1:x2]
+        return cropped_image
 
 
     def circular_hough_transform(self, edges, radius):

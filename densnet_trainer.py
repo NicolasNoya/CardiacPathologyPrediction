@@ -48,26 +48,26 @@ class DenseNetTrainer:
         self.best_loss_model_val = 1000
         self.check_val_every = check_val_every
         self.profiler = Profiler(log_dir=profiling_dir)
-        self.step = 0
+        self.step = 6
     
 
-    def train(self, criterion = None, train_loader = None, epochs = None, model=None):
-        model = (DenseNet() if model is None else model)
+    def train(self, criterion = None, train_loader = None, epochs = None, model=None, optimizer=None, starting_epoch=0):
         # Let the user tune the hyperparameters
+        model = (DenseNet() if model is None else model)
         criterion = (self.criterion if criterion is None else criterion)
         train_loader = (self.train_loader if train_loader is None else train_loader)
         epochs = (self.epochs if epochs is None else epochs)
+        optimizer = (optim.Adam(model.parameters(), lr=1e-4, weight_decay=0) if optimizer is None else optimizer)
 
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
 
-        optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
         losses_train = [0.]
         dices_train = [0.]
         losses_val = []
         dices_val = []
-        for epoch in range(epochs):
+        for epoch in range(starting_epoch, epochs):
             total_loss = 0
             total_dice = 0
             for images in tqdm(train_loader,  desc=f"Training: {epoch+1}/{epochs} Average Loss: {losses_train[-1]:.4f} Average Dice: {dices_train[-1]:.4f}"):
@@ -107,19 +107,18 @@ class DenseNetTrainer:
 
             if epoch%self.check_val_every == 0:
                 # Profile the training
-                print(type(y_pred_diastole))
                 y_pred_diastole = y_pred_diastole.cpu()
                 self.profiler.profile_segmentation_triplets(x_diastole, y_true_diastole, y_pred_diastole.detach().numpy(), tag="Segmentation Diastole Training", max_images=2, step=self.step)
                 self.profiler.log_metric(losses_train[-1], metric_name="Train Loss", step=epoch)
                 self.profiler.log_metric(dices_train[-1], metric_name="Train Dice", step=epoch)
 
-                dice_val, los_val = self.validate(model, self.val_loader, criterion, device, epoch)
+                dice_val, los_val = self.validate(model, self.val_loader, criterion, device, epoch, optimizer)
                 losses_val.append(los_val)
                 dices_val.append(dice_val)
                 self.step+=1
                 
     
-    def validate(self, model, dataloader=None, criterion=None, device=None, epoch=0):
+    def validate(self, model, dataloader=None, criterion=None, device=None, epoch=0, optimizer=None):
         # Let the user tune the hyperparameters
         criterion = (self.criterion if criterion is None else criterion)
         dataloader = (self.val_loader if dataloader is None else dataloader)
@@ -170,20 +169,31 @@ class DenseNetTrainer:
 
         if dice_val > self.best_dice_model_val:
             self.best_dice_model_val = dice_val
-            print("Best dice model saved")
+            print("Best dice model saved") 
             torch.save(model.state_dict(), f"model_weights_best_dice_val{dice_val}.pth")
-        if loss_val < self.best_loss_model_val:
-            self.best_loss_model_val = loss_val
-            print("Best loss model saved")
-            torch.save(model.state_dict(), f"model_weights_best_dice_los{loss_val}.pth")
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }, f"model_weights_best_dice_val{dice_val}.pth")
         
         return dice_val, loss_val
-
+#%%
 if __name__ == "__main__":
     path_to_images = "./data/Train"
     trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
     model = DenseNet()
-    model.load_model("/home/onyxia/work/CardiacPathologyPrediction-main/model_weights_best_dice_val(13).pth")
-    trainer.train(model=model)
+    checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    starting_epoch = checkpoint["epoch"]
+    # model.load_state_dict(torch.load("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth", weights_only=True, map_location=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')))
+    # model.to('cuda:0')
+    # model.load_model("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth")
+    # trainer.train(model=model)
 
+    trainer.train(model=model,optimizer=optimizer, starting_epoch=starting_epoch)
 # %%
+checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
+print(checkpoint.keys())
