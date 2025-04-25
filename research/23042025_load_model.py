@@ -23,6 +23,7 @@ trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction
 #%%
 for images in trainer.train_loader:
     image = images[0][0].unsqueeze(0).permute(3, 0, 1, 2).to(torch.float32)
+    print(image.shape)
     image = image.to(device)
     y_pred = model(image)
     # print(y_pred.size())

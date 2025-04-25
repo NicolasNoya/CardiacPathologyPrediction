@@ -48,7 +48,7 @@ class DenseNetTrainer:
         self.best_loss_model_val = 1000
         self.check_val_every = check_val_every
         self.profiler = Profiler(log_dir=profiling_dir)
-        self.step = 6
+        self.step = 0
     
 
     def train(self, criterion = None, train_loader = None, epochs = None, model=None, optimizer=None, starting_epoch=0):
@@ -57,7 +57,7 @@ class DenseNetTrainer:
         criterion = (self.criterion if criterion is None else criterion)
         train_loader = (self.train_loader if train_loader is None else train_loader)
         epochs = (self.epochs if epochs is None else epochs)
-        optimizer = (optim.Adam(model.parameters(), lr=1e-4, weight_decay=0) if optimizer is None else optimizer)
+        optimizer = (optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5) if optimizer is None else optimizer)
 
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -182,18 +182,18 @@ class DenseNetTrainer:
 if __name__ == "__main__":
     path_to_images = "./data/Train"
     trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
-    model = DenseNet()
-    checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    starting_epoch = checkpoint["epoch"]
+    # model = DenseNet()
+    # checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # starting_epoch = checkpoint["epoch"]
     # model.load_state_dict(torch.load("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth", weights_only=True, map_location=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')))
     # model.to('cuda:0')
     # model.load_model("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth")
-    # trainer.train(model=model)
+    trainer.train()
 
-    trainer.train(model=model,optimizer=optimizer, starting_epoch=starting_epoch)
+    # trainer.train(model=model,optimizer=optimizer, starting_epoch=starting_epoch)
 # %%
 checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
 print(checkpoint.keys())
