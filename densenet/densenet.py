@@ -86,7 +86,7 @@ class DenseNet(nn.Module):
         Args:
             model_path (str): Path to the model weights file.
         """
-        self.load_state_dict(torch.load(model_path))
+        self.load_state_dict(torch.load(model_path, map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu')))
     
 
 
