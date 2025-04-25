@@ -91,5 +91,3 @@ class FeatureExtractor:
         sv = diastole_masks.sum() - systole_masks.sum()
         edv = diastole_masks.sum()
         return (sv/edv)*100
-    
-    def 
