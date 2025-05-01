@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch.utils.data import random_split, DataLoader
 from niidataloader import NiftiDataset
 import matplotlib.pyplot as plt
+import gc
 
 from densenet.densenet import DenseNet
 from densenet.custom_loss import CombinedLoss
@@ -52,6 +53,7 @@ class DenseNetTrainer:
     
 
     def train(self, criterion = None, train_loader = None, epochs = None, model=None, optimizer=None, starting_epoch=0):
+        gc.collect() # Clean CPU memory
         # Let the user tune the hyperparameters
         model = (DenseNet() if model is None else model)
         criterion = (self.criterion if criterion is None else criterion)
@@ -116,6 +118,8 @@ class DenseNetTrainer:
                 losses_val.append(los_val)
                 dices_val.append(dice_val)
                 self.step+=1
+                torch.cuda.empty_cache()
+                gc.collect()
                 
     
     def validate(self, model, dataloader=None, criterion=None, device=None, epoch=0, optimizer=None):
@@ -182,18 +186,4 @@ class DenseNetTrainer:
 if __name__ == "__main__":
     path_to_images = "./data/Train"
     trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
-    # model = DenseNet()
-    # checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
-    # model.load_state_dict(checkpoint['model_state_dict'])
-    # optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=0)
-    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    # starting_epoch = checkpoint["epoch"]
-    # model.load_state_dict(torch.load("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth", weights_only=True, map_location=torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')))
-    # model.to('cuda:0')
-    # model.load_model("/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7799073457717896.pth")
     trainer.train()
-
-    # trainer.train(model=model,optimizer=optimizer, starting_epoch=starting_epoch)
-# %%
-checkpoint = torch.load('/home/onyxia/work/project/CardiacPathologyPrediction/model_weights_best_dice_val0.7920951843261719.pth')
-print(checkpoint.keys())

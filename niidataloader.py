@@ -20,7 +20,7 @@ class NiftiDataset(Dataset):
             augment (bool): Whether to apply data augmentation.
         """
         self.image_path = image_path
-        self.image_list = os.listdir(image_path)
+        self.image_list = np.sort(os.listdir(image_path))
         self.augment = augment
         self.roi = roi
         self.csv_path = csv_path

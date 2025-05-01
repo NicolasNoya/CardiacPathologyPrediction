@@ -4,6 +4,8 @@
 import torch
 import torch.nn as nn
 import sys
+from scipy.ndimage import label
+import numpy as np
 
 sys.path.append("./densenet")  # Add the parent directory to the path
 from dense_block import DenseBlock, InceptionX
@@ -79,6 +81,9 @@ class DenseNet(nn.Module):
         x51 = self.finalconv(x5)
         x52 = self.softmax(x51)
         return x52
+        # NOTE: I´m aware that this code is a little messy with the name of the variables.
+        # However I did it by hand without LLM help, so I figure it would be nice to leave
+        # it like this to show that
 
     def load_model(self, model_path):
         """
@@ -88,6 +93,36 @@ class DenseNet(nn.Module):
         """
         self.load_state_dict(torch.load(model_path, map_location=torch.device('cuda' if torch.cuda.is_available() else 'cpu')))
     
-
-
-   
+    def get_largest_component(self, mask):
+        """
+        This function takes a mask and returns the largest connected component of the mask.
+        
+        Args:
+            mask: A 3D mask (B,W,H)
+        REturns:
+            A 3D mask with only the largest connected component. (B,W,H)
+        """
+        if len(mask.shape) != 3:
+            raise ValueError("The input mask tensor must be a 3D mask.")
+        
+        output_mask = np.zeros_like(mask)
+        
+        for slide in range(mask.shape[0]):
+            img = mask[slide]
+            structure = [[1,1,1],[1,1,1],[1,1,1]]
+            labeled, num_features = label(img, structure=structure)
+            
+            if num_features == 0:
+                return torch.zeros_like(mask)  # No components found
+            
+            # Find the largest component
+            counts = np.bincount(labeled.flat)
+            counts[0] = 0  # Ignore background count
+            largest_label = counts.argmax()
+            
+            # Create mask for the largest component
+            largest_component = (labeled == largest_label)
+            output_mask[slide] = largest_component
+        
+        return output_mask
+        
