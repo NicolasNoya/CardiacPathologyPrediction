@@ -1,5 +1,5 @@
 data
-runs
+# runs
 __pycache__
 *.h5
 *.keras
