@@ -35,8 +35,6 @@ class ROI:
         # apply canny edge detection
         edges = np.array([canny(fh, sigma=1.0) for fh in first_harmonic])
         # apply hough transform to find circles
-        # plt.imshow(edges[1], cmap='grey')
-        # plt.show()
         cx,cy,radius = self.circular_hough_transform(edges, (8, 35))
         roi_image = []
         roi_mask = []
@@ -72,8 +70,6 @@ class ROI:
         x1, y1 = x2-128, y2-128
         # To avoid leaving the image edges in both sizes
         cropped_image = image[y1:y2, x1:x2]
-        # cropped_image = image[x1:x2, y1:y2]
-        # print("X1", x1, "X2", x2, "Y1", y1, "Y2", y2)
         return cropped_image
 
 
@@ -84,7 +80,6 @@ class ROI:
         cy = np.zeros(hough_res.shape[0])
         radii = np.zeros(hough_res.shape[0])
         for i in range(hough_res.shape[0]):
-            # _, cx[i], cy[i], radii[i] = hough_circle_peaks(hough_res[i], hough_radii, total_num_peaks=1)
             _, cx_arr, cy_arr, _ = hough_circle_peaks(hough_res[i], hough_radii, total_num_peaks=1)
             if len(cx_arr) > 0:
                 cx[i] = cx_arr[0]
@@ -104,8 +99,6 @@ class ROI:
     def get_temoral_slices(self, image_idx):
         """
         Get the temporal slices from the image data.
-        Args:
-        Returns:
         """
         image = self.dataset[image_idx]
         diastole_image = image[0]
@@ -114,6 +107,9 @@ class ROI:
         return np.moveaxis(volume, 0, -1)
 
     def first_harmonic_image(self, temporal_slices):
+        """
+        Takes every pixels as a time series and computes the first harmonic of the time series.
+        """
         fft_result = fft(temporal_slices, axis=-1)
         first_harmonic = np.abs(fft_result[..., 1])
         return first_harmonic
