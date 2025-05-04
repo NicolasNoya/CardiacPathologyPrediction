@@ -63,6 +63,21 @@ class NiftiDataset(Dataset):
         return image_tensor
     
     def __getitem__(self, idx):
+        """
+        Standard __getitem__ method to get the images. The output of this method 
+        is a tensor of shape (4, 220, 220) for each image.
+        The channels are ordered as follows:
+        0: ED
+        1: ED-seg
+        2: ES
+        3: ES-seg
+        This method also applies the augmentations defined, the preprocessing step, the 
+        padding and the ROI extraction if needed.
+        Args:
+            idx (int): Index of the image to retrieve.
+        Returns:
+            torch.Tensor: Preprocessed and augmented image tensor.
+        """
         folder=os.path.join(self.image_path, self.image_list[idx])
         image_folder = os.listdir(folder)
         # Sort the list, the order will be ED, ED-seg, ES, ES-seg
@@ -72,7 +87,6 @@ class NiftiDataset(Dataset):
             #define random augmentations for the whole image
             angle = torch.randint(-100, 100, (1,)).item()  # Random rotation
             hflip = torch.rand(1).item() > 0.5  # Random horizontal flip
-            # sheare_angle = torch.randint(0, 0, (1,)).item()  # Random shear angle
             sheare_angle = 0
             shift = (torch.randint(-5, 5, (1,)).item() , torch.randint(-10, 10, (1,)).item())  # Random shift
 
@@ -167,19 +181,3 @@ class NiftiDataset(Dataset):
             image_tensor = self.__getitem__(idx)
             image_class = pd.read_csv(self.csv_path)['Category'][idx]
             return image_tensor, image_class
-
-if __name__=="__main__":
-    # Test the NiftiDataset class
-    image_paths = 'data/Train'
-    csv_path = './data/metaDataTrain.csv'
-    dataset = NiftiDataset(image_paths, csv_path, augment=True, roi=True)
-    # for i in range(10):
-    # image_tensor = dataset[76]
-    # plt.imshow(image_tensor[0, :, :,1], cmap='gray')
-    # plt.show()
-    dataset.__get_spacing__(0)
-    #%%
-    for i in range(len(dataset)):
-        print(i)
-        print(dataset.__get_spacing__(i))
-    dataset[3].shape

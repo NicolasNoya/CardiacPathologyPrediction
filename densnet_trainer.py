@@ -182,8 +182,13 @@ class DenseNetTrainer:
             }, f"model_weights_best_dice_val{dice_val}.pth")
         
         return dice_val, loss_val
-#%%
-if __name__ == "__main__":
-    path_to_images = "./data/Train"
-    trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
-    trainer.train()
+
+
+
+#####################################
+## Example of how to use the class ##
+#####################################
+
+# path_to_images = "./data/Train"
+# trainer = DenseNetTrainer(path_to_images, epochs=200, alpha=0.25, train_fraction=0.8, check_val_every=10)
+# trainer.train()

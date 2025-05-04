@@ -22,6 +22,15 @@ class CombinedLoss(nn.Module):
         return self.alpha * loss_ce + (1 - self.alpha) * loss_dice
 
     def dice_per_class(self, preds, targets):
+        """
+        This function computes the Dice score for each slide. And outputs
+        the average Dice score for all slides.
+        Args:
+            preds (torch.Tensor): The predicted mask of shape (B, H, W).
+            targets (torch.Tensor): The ground truth mask of shape (B, H, W).
+        Returns:
+            float: The average Dice score for all slides.
+        """
         B, H, W = targets.shape
         total_dice = 0
         for i in range(B):
@@ -33,6 +42,16 @@ class CombinedLoss(nn.Module):
         
 
     def dice(self, preds, targets):
+        """
+        This function computes the Dice score for each class. And outputs
+        the average Dice score for all classes.
+        Args:
+            preds (torch.Tensor): The predicted mask of shape (B, C, H, W).
+            targets (torch.Tensor): The ground truth mask of shape (B, C, H, W).
+        Returns:
+            float: The average Dice score for all classes.
+        """
+
         B, C, H, W = targets.shape
         dice_for_each_class = 0
         
