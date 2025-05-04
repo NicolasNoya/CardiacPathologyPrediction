@@ -35,6 +35,8 @@ class ROI:
         # apply canny edge detection
         edges = np.array([canny(fh, sigma=1.0) for fh in first_harmonic])
         # apply hough transform to find circles
+        # plt.imshow(edges[1], cmap='grey')
+        # plt.show()
         cx,cy,radius = self.circular_hough_transform(edges, (8, 35))
         roi_image = []
         roi_mask = []
@@ -60,12 +62,18 @@ class ROI:
 
     def crop_roi(self, image, center, size=128):
         x, y = center
+        # If the center is -1 then we use the middle of the image
+        x=(x if x!=-1 else 110)
+        y=(y if y!=-1 else 110)
+        
         half = int(size // 2)
         x1, y1 = int(max(x - half, 0)), int(max(y - half, 0))
         x2, y2 = int(min((x1 + size),220)), int(min(y1 + size, 220))
         x1, y1 = x2-128, y2-128
         # To avoid leaving the image edges in both sizes
         cropped_image = image[y1:y2, x1:x2]
+        # cropped_image = image[x1:x2, y1:y2]
+        # print("X1", x1, "X2", x2, "Y1", y1, "Y2", y2)
         return cropped_image
 
 
@@ -117,15 +125,22 @@ if __name__ == "__main__":
     from torch.utils.data import random_split, DataLoader
     path = "./data/Train"
     roi_extractor = ROI(path)
-    roi, mask = roi_extractor.get_roi(1)
-    dataset = NiftiDataset(path, augment=False, roi=True)
+    roi, mask = roi_extractor.get_roi(0)
+    # print(roi.shape)
+    plt.imshow(roi[1],cmap='grey')
+    # dataset = NiftiDataset(path, augment=False, roi=False)
+    # dataset2 = NiftiDataset(path, augment=False, roi=True)
 
-    print("The shape of the roi is: ", dataset[0].size())
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-    for i in dataloader:
-        print((i).size())
-        plt.imshow(i[0][0,:,:,0].numpy(), cmap='gray')
-        plt.show()
-        break
+
+    # print("The shape of the roi is: ", dataset[0].size())
+    # dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+    # for i in dataloader:
+    #     print((i).size())
+    #     plt.imshow(i[0][0,:,:,0].numpy(), cmap='gray')
+    #     plt.show()
+    #     break
+    # plt.imshow(dataset[3][0,:,:,0].numpy(), cmap='grey')
+    # plt.show()
+    # plt.imshow(dataset2[3][0,:,:,0].numpy(), cmap='grey')
 # %%
 

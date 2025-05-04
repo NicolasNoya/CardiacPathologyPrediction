@@ -20,7 +20,7 @@ class NiftiDataset(Dataset):
             augment (bool): Whether to apply data augmentation.
         """
         self.image_path = image_path
-        self.image_list = os.listdir(image_path)
+        self.image_list = np.sort(os.listdir(image_path))
         self.augment = augment
         self.roi = roi
         self.csv_path = csv_path
@@ -148,6 +148,18 @@ class NiftiDataset(Dataset):
         
         return nii_image_tensor
     
+    def __get_spacing__(self, idx):
+        folder=os.path.join(self.image_path, self.image_list[idx])
+        image = os.listdir(folder)[0]
+        image_path = os.path.join(folder, image)
+        # print(/)
+        img = nib.load(image_path)
+        spacing = img.header.get_zooms()  # (x, y, z) in mm
+        # print("Voxel spacing:", spacing)
+        return spacing
+        
+
+    
     def __getitem_class__(self, idx)->Tuple[torch.Tensor, str]:
         if self.csv_path is None:
             raise ValueError("CSV path is not provided.")
@@ -162,6 +174,12 @@ if __name__=="__main__":
     csv_path = './data/metaDataTrain.csv'
     dataset = NiftiDataset(image_paths, csv_path, augment=True, roi=True)
     # for i in range(10):
-    image_tensor = dataset[76]
-    plt.imshow(image_tensor[0, :, :,1], cmap='gray')
-    plt.show()
+    # image_tensor = dataset[76]
+    # plt.imshow(image_tensor[0, :, :,1], cmap='gray')
+    # plt.show()
+    dataset.__get_spacing__(0)
+    #%%
+    for i in range(len(dataset)):
+        print(i)
+        print(dataset.__get_spacing__(i))
+    dataset[3].shape
