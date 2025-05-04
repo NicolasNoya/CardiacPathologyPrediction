@@ -41,13 +41,13 @@ class FeatureExtractor:
         spacing_x, spacing_y, spacing_z = voxel_spacing
         voxel_volume = spacing_x * spacing_y * spacing_z
 
-        lv_diastole = diastole_image[:, 3, :, :]
-        lr_diastole = diastole_image[:, 1, :, :]
-        myocardium_diastole = diastole_image[:, 2, :, :]
+        lv_diastole = diastole_image[:, 1, :, :]
+        lr_diastole = diastole_image[:, 2, :, :]
+        myocardium_diastole = diastole_image[:, 3, :, :]
 
-        lv_systole = systole_image[:, 3, :, :]
-        lr_systole = systole_image[:, 1, :, :]
-        myocardium_systole = systole_image[:, 2, :, :]
+        lv_systole = systole_image[:, 1, :, :]
+        lr_systole = systole_image[:, 2, :, :]
+        myocardium_systole = systole_image[:, 3, :, :]
 
         
         # Volumes
@@ -114,21 +114,21 @@ class FeatureExtractor:
             ratio_lv_lr_es,
             ratio_myo_lv_ed,
             ratio_myo_lv_es,
-            delta_vol_lv,
-            delta_vol_myo,
-            delta_vol_lr,
-            ratio_lv_es_ed,
-            ratio_lr_es_ed,
-            ratio_myo_es_ed,
-            compactness_lv_ed,
-            compactness_lv_es,
-            thickness_myo_ed,
-            thickness_myo_es,
-            vol_lv_ed_indexed,
-            vol_lv_es_indexed,
+            # delta_vol_lv,
+            # delta_vol_myo,
+            # delta_vol_lr,
+            # ratio_lv_es_ed,
+            # ratio_lr_es_ed,
+            # ratio_myo_es_ed,
+            # compactness_lv_ed,
+            # compactness_lv_es,
+            # thickness_myo_ed,
+            # thickness_myo_es,
+            # vol_lv_ed_indexed,
+            # vol_lv_es_indexed,
             height,
             weight,
-            bsa
+            # bsa
         ]
 
         feature_numpy = np.array(features)
