@@ -113,7 +113,7 @@ class DenseNet(nn.Module):
             labeled, num_features = label(img, structure=structure)
             
             if num_features == 0:
-                return torch.zeros_like(mask)  # No components found
+                return mask  # No components found
             
             # Find the largest component
             counts = np.bincount(labeled.flat)
